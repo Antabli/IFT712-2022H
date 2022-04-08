@@ -4,19 +4,19 @@
 ####
 
 
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import classification_report
-from sklearn.multioutput import MultiOutputClassifier
-from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import KFold
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import classification_report
+from sklearn.multioutput import MultiOutputClassifier
 import numpy as np
 import pandas as pd
+from sklearn.svm import SVC
 
-class LogisticRegression_Classifier(object):
+class SVM_Classifier(object):
     """
-    Classe pour implémenter un modèle d'arbres de décision basé sur l'arbre du module sklearn.
+    Classe pour implémenter un modèle SVM sur le module de sklearn.
 
     Paramétres:
     - x_training (array) -- Tableau de valeurs de 'Features' pour l'entrainement.
@@ -37,7 +37,7 @@ class LogisticRegression_Classifier(object):
         self.num_features = x_training.shape[1]
         self.num_classes = c_names.shape
 
-        self.estimator = MultiOutputClassifier(LogisticRegression(), n_jobs=4)
+        self.estimator = MultiOutputClassifier(SVC(probability=True), n_jobs=4)
         self.scorers = scorers
 
     def train_without_grid(self):
@@ -48,13 +48,12 @@ class LogisticRegression_Classifier(object):
         - Precision de l'entrainement
         - Précision de la validation
         """
-        LogisticRegression = self.estimator
-        LogisticRegression.fit(self.x_train, self.y_train)
-        
-        predict = LogisticRegression.predict(self.x_train)
+        svm = self.estimator
+        svm.fit(self.x_train, self.y_train)
+        predict = svm.predict(self.x_train)
         accuracy_train = accuracy_score(self.y_train, predict)
-
-        predict_valid = LogisticRegression.predict(self.x_val)
+        
+        predict_valid = svm.predict(self.x_val)
         accuracy_valid = accuracy_score(self.y_val, predict_valid)
 
         return accuracy_train, accuracy_valid
@@ -75,6 +74,7 @@ class LogisticRegression_Classifier(object):
         - Le meilleur estimateur
         - Le meilleur score
         """
+        
         # Initialisation de la Grid search avec kfold
         searching_params = {
             "scoring": self.scorers,
@@ -98,11 +98,10 @@ class LogisticRegression_Classifier(object):
         self.estimator = search_g.best_estimator_
         self.best_accuracy = search_g.best_score_
         self.hyper_search = search_g
-        
         # Prédictions sur les données d'entraînement et de validation
         predict_train = search_g.predict(self.x_train)
         predict_valid = search_g.predict(self.x_val)
-        
+
         # Précision de l'entrainement et de la validation
         accuracy_train = accuracy_score(self.y_train, predict_train)
         accuracy_valid = accuracy_score(self.y_val, predict_valid)
@@ -111,10 +110,10 @@ class LogisticRegression_Classifier(object):
 
     def predict(self, Data):
         """
-        Utilisons le modèle formé pour prédire la classe de l'échantillon.
-        Data : Une liste contenant un ou plusieurs échantillons.
+        Use the trained model to predict the sample's class.
+        Data: A list containing one or many samples.
 
-        Renvoie une étiquette de classe codée pour chaque échantillon.
+        Returns a encoded class label for each sample.
         """
         class_lab = self.estimator.predict(Data)
         return class_lab
