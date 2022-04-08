@@ -117,5 +117,4 @@ class DecisionTree_Classifier(object):
 
         Renvoie une étiquette de classe codée pour chaque échantillon.
         """
-        class_lab = self.estimator.predict(Data)
-        return class_lab
+        return self.estimator.predict(Data)

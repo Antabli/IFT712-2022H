@@ -4,19 +4,20 @@
 ####
 
 
+from sklearn.neural_network import MLPClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import KFold
 from sklearn.metrics import accuracy_score
+from sklearn.metrics import log_loss
 from sklearn.metrics import classification_report
-from sklearn.multioutput import MultiOutputClassifier
 import numpy as np
 import pandas as pd
-from sklearn.svm import SVC
+from IPython.display import display
 
-class SVM_Classifier(object):
+class NN_Classifier(object):
     """
-    Classe pour implémenter un modèle SVM sur le module de sklearn.
+    Classe pour implémenter un modèle de réseau de neurones sur le module Multi Layers Perceptron (MLP) de sklearn.
 
     Paramétres:
     - x_training (array) -- Tableau de valeurs de 'Features' pour l'entrainement.
@@ -25,11 +26,10 @@ class SVM_Classifier(object):
     - y_valid (array) -- Tableau de vrais de 'Labels' pour valider le modèle.
     - c_names (array) -- Tableau de noms à lier aux 'Labels'
     """
-    
+
     def __init__(self, x_training, y_training, x_valid, y_valid, c_names, scorers):
         self.x_train = x_training
         self.y_train = y_training
-
         self.x_val = x_valid
         self.y_val = y_valid
         self.class_names = c_names
@@ -37,28 +37,33 @@ class SVM_Classifier(object):
         self.num_features = x_training.shape[1]
         self.num_classes = c_names.shape
 
-        self.estimator = MultiOutputClassifier(SVC(probability=True), n_jobs=4)
+        self.estimator = MLPClassifier(max_iter=800)
         self.scorers = scorers
+        self.hyper_search = None
 
-    def train_without_grid(self):
+    def default_training(self, verbose=False):
         """
-        Entrainner le modèle sans 'Grid Search'
+        Entraînons le modèle avec les paramètres sklearn par défaut.
 
         Retourne un tuple pour:
         - Precision de l'entrainement
         - Précision de la validation
         """
-        svm = self.estimator
-        svm.fit(self.x_train, self.y_train)
-        predict = svm.predict(self.x_train)
+        self.estimator.fit(self.x_train, self.y_train)
+
+        predict = self.estimator.predict(self.x_train)
         accuracy_train = accuracy_score(self.y_train, predict)
-        
-        predict_valid = svm.predict(self.x_val)
+
+        predict_valid = self.estimator.predict(self.x_val)
         accuracy_valid = accuracy_score(self.y_val, predict_valid)
+
+        if verbose:
+            print('Precision de l`entrainement {:.3%}'.format(accuracy_train))
+            print('Précision de la validation: {:.3%}'.format(accuracy_valid))
 
         return accuracy_train, accuracy_valid
 
-    def train(self, grid_param={}, random_search=True):
+    def hyperparameter_train(self, grid_param, random_search=True, verbose=False):
         """
         Entraînez le modèle avec un 'Grid Search' et une validation croisée.
 
@@ -71,42 +76,51 @@ class SVM_Classifier(object):
         Retourne un tuple pour:
         - L'exactitude d'entrainement
         - L'exactitude de la validation
-        - Le meilleur estimateur
-        - Le meilleur score
+        Et:
+        - Entraine self.estimator avec le meilleur scoreur
         """
-        
+
         # Initialisation de la Grid search avec kfold
         searching_params = {
             "scoring": self.scorers,
             "refit": "Accuracy",
             "cv": KFold(n_splits=5, shuffle=True),
             "return_train_score": True,
-            "n_jobs": 4,
-            "verbose": 1}
+            "verbose": int(verbose),
+            "n_jobs": 4}
 
         if random_search:
-            print("Utilisation de la recherche aléatoire :")
-            search_g = RandomizedSearchCV(self.estimator, grid_param).set_params(**searching_params)
+            if verbose:
+                print("Utilisation de la recherche aléatoire :")
+            self.hyper_search = RandomizedSearchCV(self.estimator, grid_param).set_params(**searching_params)
         else:
-            print("Utilisation de la recherche complète :")
-            search_g = GridSearchCV(self.estimator, grid_param).set_params(**searching_params)
+            if verbose:
+                print("Utilisation de la recherche complète :")
+            self.hyper_search = GridSearchCV(self.estimator, grid_param).set_params(**searching_params)
 
-        # Entrainement
-        search_g.fit(self.x_train, self.y_train)
+        # Recherche de hyper-paramèters
+        self.hyper_search.fit(self.x_train, self.y_train)
 
-        # Enregistrons le meilleur estimateur et imprimons-le avec la meilleure précision obtenue grâce à la validation croisée
-        self.estimator = search_g.best_estimator_
-        self.best_accuracy = search_g.best_score_
-        self.hyper_search = search_g
+        # Enregistrons le meilleur estimateur
+        self.estimator = self.hyper_search.best_estimator_
+
         # Prédictions sur les données d'entraînement et de validation
-        predict_train = search_g.predict(self.x_train)
-        predict_valid = search_g.predict(self.x_val)
+        predict_train = self.hyper_search.predict(self.x_train)
+        predict_valid = self.hyper_search.predict(self.x_val)
 
         # Précision de l'entrainement et de la validation
         accuracy_train = accuracy_score(self.y_train, predict_train)
         accuracy_valid = accuracy_score(self.y_val, predict_valid)
 
-        return accuracy_train, accuracy_valid, self.estimator, self.best_accuracy
+        if verbose:
+            print()
+            print('Meilleure précision de validation croisée : {}'.format(self.hyper_search.best_score_))
+            print('\nMeilleur estimateur:\n{}'.format(self.hyper_search.best_estimator_))
+            print()
+            print('\nPrécision de l`entrainement: {:.3%}'.format(accuracy_train))
+            print('Précision de la validation: {:.3%}'.format(accuracy_valid))
+
+        return accuracy_train, accuracy_valid
 
     def predict(self, Data):
         """
