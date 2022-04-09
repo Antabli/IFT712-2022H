@@ -41,7 +41,7 @@ class NN_Classifier(object):
         self.scorers = scorers
         self.hyper_search = None
 
-    def default_training(self, verbose=False):
+    def default_training(self, verb=False):
         """
         Entraînons le modèle avec les paramètres sklearn par défaut.
 
@@ -57,20 +57,20 @@ class NN_Classifier(object):
         predict_valid = self.estimator.predict(self.x_val)
         accuracy_valid = accuracy_score(self.y_val, predict_valid)
 
-        if verbose:
-            print('Precision de l`entrainement {:.3%}'.format(accuracy_train))
+        if verb:
+            print('Precision de l`entrainement: {:.3%}'.format(accuracy_train))
             print('Précision de la validation: {:.3%}'.format(accuracy_valid))
 
         return accuracy_train, accuracy_valid
 
-    def hyperparameter_train(self, grid_param, random_search=True, verbose=False):
+    def hyperparameter_training(self, grid_param, rand_search=True, verb=False):
         """
         Entraînez le modèle avec un 'Grid Search' et une validation croisée.
 
         Entrée:
         - grid_param (dict): dictionnaire de valeurs à tester dans la grille de recherche.
         S'il n'est pas fourni, on utilisera les valeurs par défaut de l'estimateur.
-        - random_search (bool), default=True -- Si True, on utilise la recherche aléatoire,
+        - rand_search (bool), default=True -- Si True, on utilise la recherche aléatoire,
                 si False recherche toutes les combinaisons de paramètres (prend plus de temps).
 
         Retourne un tuple pour:
@@ -81,24 +81,24 @@ class NN_Classifier(object):
         """
 
         # Initialisation de la Grid search avec kfold
-        searching_params = {
+        search_parameter = {
             "scoring": self.scorers,
             "refit": "Accuracy",
             "cv": KFold(n_splits=5, shuffle=True),
             "return_train_score": True,
-            "verbose": int(verbose),
+            "verbose": int(verb),
             "n_jobs": 4}
 
-        if random_search:
-            if verbose:
+        if rand_search:
+            if verb:
                 print("Utilisation de la recherche aléatoire :")
-            self.hyper_search = RandomizedSearchCV(self.estimator, grid_param).set_params(**searching_params)
+            self.hyper_search = RandomizedSearchCV(self.estimator, grid_param).set_params(**search_parameter)
         else:
-            if verbose:
+            if verb:
                 print("Utilisation de la recherche complète :")
-            self.hyper_search = GridSearchCV(self.estimator, grid_param).set_params(**searching_params)
+            self.hyper_search = GridSearchCV(self.estimator, grid_param).set_params(**search_parameter)
 
-        # Recherche de hyper-paramèters
+        # Recherche des hyper-paramèters
         self.hyper_search.fit(self.x_train, self.y_train)
 
         # Enregistrons le meilleur estimateur
@@ -112,7 +112,7 @@ class NN_Classifier(object):
         accuracy_train = accuracy_score(self.y_train, predict_train)
         accuracy_valid = accuracy_score(self.y_val, predict_valid)
 
-        if verbose:
+        if verb:
             print()
             print('Meilleure précision de validation croisée : {}'.format(self.hyper_search.best_score_))
             print('\nMeilleur estimateur:\n{}'.format(self.hyper_search.best_estimator_))

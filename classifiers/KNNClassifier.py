@@ -1,22 +1,27 @@
-
 #####
-# Réalisé par: Ala Antabli (20012727)
+# Equipe 3 :
+#   - bouk1001 - BOUHAMIDI EL ALAOUI, Kaoutar
+#   - brat3201 - BRANDELET, Thomas
+#   - caiy2401 - CAI, Yunfan
 ####
 
 
+import numpy as np
+import pandas as pd
+from IPython.display import display
+
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import KFold
 from sklearn.metrics import accuracy_score
+from sklearn.metrics import log_loss
 from sklearn.metrics import classification_report
-from sklearn.multioutput import MultiOutputClassifier
-import numpy as np
-import pandas as pd
-from sklearn.svm import SVC
 
-class SVM_Classifier(object):
+
+class KNN_Classifier(object):
     """
-    Classe pour implémenter un modèle SVM sur le module de sklearn.
+    Classe pour implémenter un modèle KNN basé sur KNeighborsClassifier du module sklearn.
 
     Paramétres:
     - x_training (array) -- Tableau de valeurs de 'Features' pour l'entrainement.
@@ -25,11 +30,10 @@ class SVM_Classifier(object):
     - y_valid (array) -- Tableau de vrais de 'Labels' pour valider le modèle.
     - c_names (array) -- Tableau de noms à lier aux 'Labels'
     """
-    
+
     def __init__(self, x_training, y_training, x_valid, y_valid, c_names, scorers):
         self.x_train = x_training
         self.y_train = y_training
-
         self.x_val = x_valid
         self.y_val = y_valid
         self.class_names = c_names
@@ -37,8 +41,9 @@ class SVM_Classifier(object):
         self.num_features = x_training.shape[1]
         self.num_classes = c_names.shape
 
-        self.estimator = MultiOutputClassifier(SVC(probability=True), n_jobs=4)
+        self.estimator = KNeighborsClassifier(n_neighbors=3, n_jobs=4)
         self.scorers = scorers
+        self.best_accuracy = 0
 
     def train_without_grid(self):
         """
@@ -48,12 +53,12 @@ class SVM_Classifier(object):
         - Precision de l'entrainement
         - Précision de la validation
         """
-        svm = self.estimator
-        svm.fit(self.x_train, self.y_train)
-        predict = svm.predict(self.x_train)
+        K_NN = self.estimator
+        K_NN.fit(self.x_train, self.y_train)
+        predict = K_NN.predict(self.x_train)
         accuracy_train = accuracy_score(self.y_train, predict)
-        
-        predict_valid = svm.predict(self.x_val)
+
+        predict_valid = K_NN.predict(self.x_val)
         accuracy_valid = accuracy_score(self.y_val, predict_valid)
 
         return accuracy_train, accuracy_valid
@@ -74,7 +79,7 @@ class SVM_Classifier(object):
         - Le meilleur estimateur
         - Le meilleur score
         """
-        
+
         # Initialisation de la Grid search avec kfold
         search_parameter = {
             "scoring": self.scorers,
@@ -98,11 +103,12 @@ class SVM_Classifier(object):
         self.estimator = search_grid.best_estimator_
         self.best_accuracy = search_grid.best_score_
         self.hyper_search = search_grid
-        # Prédictions sur les données d'entraînement et de validation
-        predict_train = search_grid.predict(self.x_train)
-        predict_valid = search_grid.predict(self.x_val)
 
-        # Précision de l'entrainement et de la validation
+        # Prédictions sur les données d'entraînement et de validation
+        predict_train = self.estimator.predict(self.x_train)
+        predict_valid = self.estimator.predict(self.x_val)
+
+        # Train and validation accuracy and loss
         accuracy_train = accuracy_score(self.y_train, predict_train)
         accuracy_valid = accuracy_score(self.y_val, predict_valid)
 
