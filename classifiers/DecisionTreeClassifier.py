@@ -59,14 +59,14 @@ class DecisionTree_Classifier(object):
 
         return accuracy_train, accuracy_valid
 
-    def train(self, grid_param={}, random_search=True):
+    def train(self, grid_param={}, rand_search=True):
         """
         Entraînez le modèle avec un 'Grid Search' et une validation croisée.
 
         Entrée:
         - grid_param (dict): dictionnaire de valeurs à tester dans la grille de recherche.
         S'il n'est pas fourni, on utilisera les valeurs par défaut de l'estimateur.
-        - random_search (bool), default=True -- Si True, on utilise la recherche aléatoire,
+        - rand_search (bool), default=True -- Si True, on utilise la recherche aléatoire,
                 si False recherche toutes les combinaisons de paramètres (prend plus de temps).
 
         Retourne un tuple pour:
@@ -77,7 +77,7 @@ class DecisionTree_Classifier(object):
         """
 
         # Initialisation de la Grid search avec kfold
-        searching_params = {
+        search_parameter = {
             "scoring": self.scorers,
             "refit": "Accuracy",
             "cv": KFold(n_splits=5, shuffle=True),
@@ -85,20 +85,20 @@ class DecisionTree_Classifier(object):
             "n_jobs": 4,
             "verbose": 1}
 
-        if random_search:
+        if rand_search:
             print("Utilisation de la recherche aléatoire :")
-            search_g = RandomizedSearchCV(self.estimator, grid_param).set_params(**searching_params)
+            search_grid = RandomizedSearchCV(self.estimator, grid_param).set_params(**search_parameter)
         else:
             print("Utilisation de la recherche complète :")
-            search_g = GridSearchCV(self.estimator, grid_param).set_params(**searching_params)
+            search_grid = GridSearchCV(self.estimator, grid_param).set_params(**search_parameter)
 
         # Entrainement
-        search_g.fit(self.x_train, self.y_train)
+        search_grid.fit(self.x_train, self.y_train)
 
         # Enregistrons le meilleur estimateur et imprimons-le avec la meilleure précision obtenue grâce à la validation croisée
-        self.estimator = search_g.best_estimator_
-        self.best_accuracy = search_g.best_score_
-        self.hyper_search = search_g
+        self.estimator = search_grid.best_estimator_
+        self.best_accuracy = search_grid.best_score_
+        self.hyper_search = search_grid
 
         # Prédictions sur les données d'entraînement et de validation
         predict_train = self.estimator.predict(self.x_train)
